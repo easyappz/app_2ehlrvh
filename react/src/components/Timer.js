@@ -28,10 +28,50 @@ const ControlButtons = styled(Box)({
   gap: '12px',
 });
 
+const ErrorMessage = styled(Typography)({
+  color: '#ff5252',
+  marginTop: '16px',
+  fontSize: '14px',
+});
+
 const Timer = () => {
   const [seconds, setSeconds] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Load initial timer data from server on component mount
+  useEffect(() => {
+    const fetchTimerData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch('/api/timer', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch timer data');
+        }
+
+        const data = await response.json();
+        if (data.data && data.data.totalSeconds) {
+          setSeconds(data.data.totalSeconds);
+        }
+      } catch (err) {
+        setError('Could not load timer data from server');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTimerData();
+  }, []);
+
+  // Timer logic
   useEffect(() => {
     let interval = null;
     if (isRunning) {
@@ -42,6 +82,29 @@ const Timer = () => {
     return () => clearInterval(interval);
   }, [isRunning]);
 
+  // Save timer data to server
+  const saveTimerData = async (totalSeconds) => {
+    try {
+      const response = await fetch('/api/timer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ totalSeconds }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save timer data');
+      }
+
+      return await response.json();
+    } catch (err) {
+      setError('Could not save timer data to server');
+      console.error(err);
+      throw err;
+    }
+  };
+
   const formatTime = (totalSeconds) => {
     const minutes = Math.floor(totalSeconds / 60);
     const remainingSeconds = totalSeconds % 60;
@@ -50,22 +113,41 @@ const Timer = () => {
 
   const handleStart = () => {
     setIsRunning(true);
+    setError('');
   };
 
-  const handlePause = () => {
+  const handlePause = async () => {
     setIsRunning(false);
+    try {
+      await saveTimerData(seconds);
+      setError('');
+    } catch (err) {
+      // Error is set in saveTimerData
+    }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setIsRunning(false);
-    setSeconds(0);
+    try {
+      await saveTimerData(seconds);
+      setSeconds(0);
+      setError('');
+    } catch (err) {
+      // Error is set in saveTimerData
+    }
   };
 
   return (
     <TimerContainer>
-      <TimeDisplay variant="h3">{formatTime(seconds)}</TimeDisplay>
+      {isLoading ? (
+        <Typography variant="h6" sx={{ marginBottom: '16px', color: '#61dafb' }}>
+          Loading...
+        </Typography>
+      ) : (
+        <TimeDisplay variant="h3">{formatTime(seconds)}</TimeDisplay>
+      )}
       <ControlButtons>
-        {!isRunning && (
+        {!isRunning && !isLoading && (
           <Button
             variant="contained"
             color="primary"
@@ -75,7 +157,7 @@ const Timer = () => {
             Start
           </Button>
         )}
-        {isRunning && (
+        {isRunning && !isLoading && (
           <Button
             variant="contained"
             color="secondary"
@@ -85,15 +167,18 @@ const Timer = () => {
             Pause
           </Button>
         )}
-        <Button
-          variant="outlined"
-          color="error"
-          onClick={handleReset}
-          sx={{ borderRadius: '8px', textTransform: 'none', padding: '8px 16px', borderColor: '#ff5252', color: '#ff5252' }}
-        >
-          Reset
-        </Button>
+        {!isLoading && (
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={handleReset}
+            sx={{ borderRadius: '8px', textTransform: 'none', padding: '8px 16px', borderColor: '#ff5252', color: '#ff5252' }}
+          >
+            Reset
+          </Button>
+        )}
       </ControlButtons>
+      {error && <ErrorMessage>{error}</ErrorMessage>}
     </TimerContainer>
   );
 };
