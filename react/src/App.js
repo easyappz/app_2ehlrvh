@@ -14,8 +14,7 @@ function App() {
             Шаблон React успешно развернут, <br />
             Ждите обновлений от AI :)
           </p>
-          <div className="Timer-container">
-            <h2>Timer Component</h2>
+          <div className="Timer-wrapper">
             <Timer />
           </div>
         </header>
