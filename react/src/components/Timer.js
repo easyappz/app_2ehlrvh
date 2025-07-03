@@ -40,7 +40,7 @@ const Timer = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load initial timer data from server on component mount
+  // Fetch initial timer data on component mount
   useEffect(() => {
     const fetchTimerData = async () => {
       try {
@@ -56,9 +56,9 @@ const Timer = () => {
           throw new Error('Failed to fetch timer data');
         }
 
-        const data = await response.json();
-        if (data.data && data.data.totalSeconds) {
-          setSeconds(data.data.totalSeconds);
+        const result = await response.json();
+        if (result.data && result.data.totalSeconds) {
+          setSeconds(result.data.totalSeconds);
         }
       } catch (err) {
         setError('Could not load timer data from server');
@@ -82,7 +82,7 @@ const Timer = () => {
     return () => clearInterval(interval);
   }, [isRunning]);
 
-  // Save timer data to server
+  // Function to save timer data to server
   const saveTimerData = async (totalSeconds) => {
     try {
       const response = await fetch('/api/timer', {
@@ -122,61 +122,61 @@ const Timer = () => {
       await saveTimerData(seconds);
       setError('');
     } catch (err) {
-      // Error is set in saveTimerData
+      setError('Could not save timer data to server');
     }
   };
 
   const handleReset = async () => {
     setIsRunning(false);
     try {
-      await saveTimerData(seconds);
+      await saveTimerData(0);
       setSeconds(0);
       setError('');
     } catch (err) {
-      // Error is set in saveTimerData
+      setError('Could not reset timer data on server');
     }
   };
 
   return (
     <TimerContainer>
       {isLoading ? (
-        <Typography variant="h6" sx={{ marginBottom: '16px', color: '#61dafb' }}>
-          Loading...
+        <Typography variant="h6" sx={{ color: '#61dafb', marginBottom: '16px' }}>
+          Loading timer...
         </Typography>
       ) : (
         <TimeDisplay variant="h3">{formatTime(seconds)}</TimeDisplay>
       )}
       <ControlButtons>
-        {!isRunning && !isLoading && (
+        {!isRunning ? (
           <Button
             variant="contained"
             color="primary"
             onClick={handleStart}
             sx={{ borderRadius: '8px', textTransform: 'none', padding: '8px 16px' }}
+            disabled={isLoading}
           >
             Start
           </Button>
-        )}
-        {isRunning && !isLoading && (
+        ) : (
           <Button
             variant="contained"
             color="secondary"
             onClick={handlePause}
             sx={{ borderRadius: '8px', textTransform: 'none', padding: '8px 16px' }}
+            disabled={isLoading}
           >
             Pause
           </Button>
         )}
-        {!isLoading && (
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={handleReset}
-            sx={{ borderRadius: '8px', textTransform: 'none', padding: '8px 16px', borderColor: '#ff5252', color: '#ff5252' }}
-          >
-            Reset
-          </Button>
-        )}
+        <Button
+          variant="outlined"
+          color="error"
+          onClick={handleReset}
+          sx={{ borderRadius: '8px', textTransform: 'none', padding: '8px 16px', borderColor: '#ff5252', color: '#ff5252' }}
+          disabled={isLoading}
+        >
+          Reset
+        </Button>
       </ControlButtons>
       {error && <ErrorMessage>{error}</ErrorMessage>}
     </TimerContainer>
